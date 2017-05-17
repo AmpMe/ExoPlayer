@@ -30,6 +30,7 @@ import com.google.android.exoplayer2.trackselection.TrackSelectionArray;
 import com.google.android.exoplayer2.trackselection.TrackSelector;
 import com.google.android.exoplayer2.trackselection.TrackSelectorResult;
 import com.google.android.exoplayer2.util.Assertions;
+import com.google.android.exoplayer2.util.MediaClock;
 import com.google.android.exoplayer2.util.Util;
 import java.util.concurrent.CopyOnWriteArraySet;
 
@@ -318,6 +319,11 @@ import java.util.concurrent.CopyOnWriteArraySet;
   @Override
   public boolean isCurrentWindowSeekable() {
     return !timeline.isEmpty() && timeline.getWindow(getCurrentWindowIndex(), window).isSeekable;
+  }
+
+  @Override
+  public void setMediaClock(MediaClock mediaClock) {
+    internalPlayer.setMediaClock(mediaClock);
   }
 
   @Override

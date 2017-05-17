@@ -29,6 +29,7 @@ import com.google.android.exoplayer2.trackselection.DefaultTrackSelector;
 import com.google.android.exoplayer2.trackselection.TrackSelectionArray;
 import com.google.android.exoplayer2.trackselection.TrackSelector;
 import com.google.android.exoplayer2.upstream.DataSource;
+import com.google.android.exoplayer2.util.MediaClock;
 import com.google.android.exoplayer2.video.MediaCodecVideoRenderer;
 
 /**
@@ -492,4 +493,5 @@ public interface ExoPlayer {
    */
   boolean isCurrentWindowSeekable();
 
+  void setMediaClock(MediaClock mediaClock);
 }

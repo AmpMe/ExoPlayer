@@ -41,14 +41,3 @@ dependencies {
     androidTestCompile 'com.google.dexmaker:dexmaker-mockito:' + dexmakerVersion
     androidTestCompile 'org.mockito:mockito-core:' + mockitoVersion
 }
-
-ext {
-    javadocTitle = 'Core module'
-}
-apply from: '../../javadoc_library.gradle'
-
-ext {
-    releaseArtifact = 'exoplayer-core'
-    releaseDescription = 'The ExoPlayer library core module.'
-}
-apply from: '../../publish.gradle'

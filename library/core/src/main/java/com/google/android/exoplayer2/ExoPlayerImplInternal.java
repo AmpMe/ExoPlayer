@@ -168,6 +168,7 @@ import java.io.IOException;
   private MediaPeriodHolder playingPeriodHolder;
 
   private Timeline timeline;
+  private MediaClock customMediaClock;
 
   public ExoPlayerImplInternal(Renderer[] renderers, TrackSelector trackSelector,
       LoadControl loadControl, boolean playWhenReady, Handler eventHandler,
@@ -261,6 +262,10 @@ import java.io.IOException;
       }
     }
     internalPlaybackThread.quit();
+  }
+
+  public void setMediaClock(MediaClock mediaClock) {
+    this.customMediaClock = mediaClock;
   }
 
   // MediaSource.Listener implementation.
@@ -436,13 +441,14 @@ import java.io.IOException;
     if (periodPositionUs != C.TIME_UNSET) {
       resetRendererPosition(periodPositionUs);
     } else {
-      if (rendererMediaClockSource != null && !rendererMediaClockSource.isEnded()) {
-        rendererPositionUs = rendererMediaClock.getPositionUs();
-        standaloneMediaClock.setPositionUs(rendererPositionUs);
+      if (customMediaClock != null) {
+        standaloneMediaClock.synchronize(customMediaClock);
+        rendererPositionUs = playingPeriodHolder.toRendererTime(standaloneMediaClock.getPositionUs());
+        periodPositionUs = rendererPositionUs;
       } else {
         rendererPositionUs = standaloneMediaClock.getPositionUs();
+        periodPositionUs = playingPeriodHolder.toPeriodTime(rendererPositionUs);
       }
-      periodPositionUs = playingPeriodHolder.toPeriodTime(rendererPositionUs);
     }
     playbackInfo.positionUs = periodPositionUs;
     elapsedRealtimeUs = SystemClock.elapsedRealtime() * 1000;

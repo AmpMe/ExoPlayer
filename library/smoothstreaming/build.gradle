@@ -42,14 +42,3 @@ dependencies {
     androidTestCompile 'com.google.dexmaker:dexmaker-mockito:' + dexmakerVersion
     androidTestCompile 'org.mockito:mockito-core:' + mockitoVersion
 }
-
-ext {
-    javadocTitle = 'SmoothStreaming module'
-}
-apply from: '../../javadoc_library.gradle'
-
-ext {
-    releaseArtifact = 'exoplayer-smoothstreaming'
-    releaseDescription = 'The ExoPlayer library SmoothStreaming module.'
-}
-apply from: '../../publish.gradle'

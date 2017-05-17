@@ -36,6 +36,7 @@ import com.google.android.exoplayer2.text.Cue;
 import com.google.android.exoplayer2.text.TextRenderer;
 import com.google.android.exoplayer2.trackselection.TrackSelectionArray;
 import com.google.android.exoplayer2.trackselection.TrackSelector;
+import com.google.android.exoplayer2.util.MediaClock;
 import com.google.android.exoplayer2.video.VideoRendererEventListener;
 import java.util.List;
 
@@ -641,6 +642,11 @@ public class SimpleExoPlayer implements ExoPlayer {
   @Override
   public boolean isCurrentWindowSeekable() {
     return player.isCurrentWindowSeekable();
+  }
+
+  @Override
+  public void setMediaClock(MediaClock mediaClock) {
+    player.setMediaClock(mediaClock);
   }
 
   // Internal methods.
