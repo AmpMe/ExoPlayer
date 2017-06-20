@@ -11,7 +11,26 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
+
+apply plugin: 'com.github.dcendents.android-maven'
+apply plugin: 'com.jfrog.bintray'
+apply plugin: 'maven-publish'
+apply plugin: 'maven'
 apply plugin: 'com.android.library'
+
+group project.ext.releaseGroupId
+version = project.ext.releaseVersion
+
+buildscript {
+    repositories {
+        jcenter()
+    }
+    dependencies {
+        classpath 'com.android.tools.build:gradle:2.3.2'
+        classpath 'com.jfrog.bintray.gradle:gradle-bintray-plugin:1.7.3'
+        classpath 'com.github.dcendents:android-maven-gradle-plugin:1.5'
+    }
+}
 
 android {
     compileSdkVersion project.ext.compileSdkVersion
@@ -32,6 +51,30 @@ android {
         debug {
             testCoverageEnabled = true
         }
+        release {
+            minifyEnabled false
+        }
+    }
+
+    task sourcesJar(type: Jar) {
+        from android.sourceSets.main.java.srcDirs
+        classifier = 'sources'
+    }
+
+    task javadoc(type: Javadoc) {
+        failOnError false
+        source = android.sourceSets.main.java.srcDirs
+        classpath += project.files(android.getBootClasspath().join(File.pathSeparator))
+    }
+
+    task javadocJar(type: Jar, dependsOn: javadoc) {
+        classifier = 'javadoc'
+        from javadoc.destinationDir
+    }
+
+    artifacts {
+        archives javadocJar
+        archives sourcesJar
     }
 }
 
@@ -40,4 +83,37 @@ dependencies {
     androidTestCompile 'com.google.dexmaker:dexmaker:' + dexmakerVersion
     androidTestCompile 'com.google.dexmaker:dexmaker-mockito:' + dexmakerVersion
     androidTestCompile 'org.mockito:mockito-core:' + mockitoVersion
+}
+
+bintray {
+    user = System.properties['bintray.user']
+    key = System.properties['bintray.key']
+    pkg {
+        name = 'exoplayer'
+        repo = 'maven'
+        userOrg = 'ampme'
+    }
+    publish = true
+    configurations = ['archives']
+}
+
+afterEvaluate {
+    project.bintray {
+        publish = true
+        pkg {
+            userOrg = 'ampme'
+        }
+    }
+}
+
+install {
+    repositories {
+        mavenInstaller {
+            pom {
+                project {
+                    packaging 'aar'
+                }
+            }
+        }
+    }
 }
