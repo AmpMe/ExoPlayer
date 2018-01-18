@@ -20,6 +20,8 @@ import android.support.annotation.IntDef;
 import android.support.annotation.Nullable;
 import com.google.android.exoplayer2.source.TrackGroupArray;
 import com.google.android.exoplayer2.trackselection.TrackSelectionArray;
+import com.google.android.exoplayer2.util.MediaClock;
+
 import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
 

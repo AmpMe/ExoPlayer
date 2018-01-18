@@ -36,7 +36,6 @@ allprojects {
     }
     project.ext {
         exoplayerPublishEnabled = true
-        releaseVersion = 'r2.99.0'
     }
     if (it.hasProperty('externalBuildDir')) {
         if (!new File(externalBuildDir).isAbsolute()) {
