@@ -15,22 +15,19 @@
  */
 package com.google.android.exoplayer2.ui;
 
+import android.annotation.SuppressLint;
 import android.widget.TextView;
-import com.google.android.exoplayer2.ExoPlaybackException;
-import com.google.android.exoplayer2.ExoPlayer;
 import com.google.android.exoplayer2.Format;
-import com.google.android.exoplayer2.PlaybackParameters;
+import com.google.android.exoplayer2.Player;
 import com.google.android.exoplayer2.SimpleExoPlayer;
-import com.google.android.exoplayer2.Timeline;
 import com.google.android.exoplayer2.decoder.DecoderCounters;
-import com.google.android.exoplayer2.source.TrackGroupArray;
-import com.google.android.exoplayer2.trackselection.TrackSelectionArray;
+import java.util.Locale;
 
 /**
  * A helper class for periodically updating a {@link TextView} with debug information obtained from
  * a {@link SimpleExoPlayer}.
  */
-public final class DebugTextViewHelper implements Runnable, ExoPlayer.EventListener {
+public final class DebugTextViewHelper extends Player.DefaultEventListener implements Runnable {
 
   private static final int REFRESH_INTERVAL_MS = 1000;
 
@@ -74,12 +71,7 @@ public final class DebugTextViewHelper implements Runnable, ExoPlayer.EventListe
     textView.removeCallbacks(this);
   }
 
-  // ExoPlayer.EventListener implementation.
-
-  @Override
-  public void onLoadingChanged(boolean isLoading) {
-    // Do nothing.
-  }
+  // Player.EventListener implementation.
 
   @Override
   public void onPlayerStateChanged(boolean playWhenReady, int playbackState) {
@@ -87,28 +79,8 @@ public final class DebugTextViewHelper implements Runnable, ExoPlayer.EventListe
   }
 
   @Override
-  public void onPositionDiscontinuity() {
+  public void onPositionDiscontinuity(@Player.DiscontinuityReason int reason) {
     updateAndPost();
-  }
-
-  @Override
-  public void onPlaybackParametersChanged(PlaybackParameters playbackParameters) {
-    // Do nothing.
-  }
-
-  @Override
-  public void onTimelineChanged(Timeline timeline, Object manifest) {
-    // Do nothing.
-  }
-
-  @Override
-  public void onPlayerError(ExoPlaybackException error) {
-    // Do nothing.
-  }
-
-  @Override
-  public void onTracksChanged(TrackGroupArray tracks, TrackSelectionArray selections) {
-    // Do nothing.
   }
 
   // Runnable implementation.
@@ -120,6 +92,7 @@ public final class DebugTextViewHelper implements Runnable, ExoPlayer.EventListe
 
   // Private methods.
 
+  @SuppressLint("SetTextI18n")
   private void updateAndPost() {
     textView.setText(getPlayerStateString() + getPlayerWindowIndexString() + getVideoString()
         + getAudioString());
@@ -130,16 +103,16 @@ public final class DebugTextViewHelper implements Runnable, ExoPlayer.EventListe
   private String getPlayerStateString() {
     String text = "playWhenReady:" + player.getPlayWhenReady() + " playbackState:";
     switch (player.getPlaybackState()) {
-      case ExoPlayer.STATE_BUFFERING:
+      case Player.STATE_BUFFERING:
         text += "buffering";
         break;
-      case ExoPlayer.STATE_ENDED:
+      case Player.STATE_ENDED:
         text += "ended";
         break;
-      case ExoPlayer.STATE_IDLE:
+      case Player.STATE_IDLE:
         text += "idle";
         break;
-      case ExoPlayer.STATE_READY:
+      case Player.STATE_READY:
         text += "ready";
         break;
       default:
@@ -159,8 +132,8 @@ public final class DebugTextViewHelper implements Runnable, ExoPlayer.EventListe
       return "";
     }
     return "\n" + format.sampleMimeType + "(id:" + format.id + " r:" + format.width + "x"
-        + format.height + getDecoderCountersBufferCountString(player.getVideoDecoderCounters())
-        + ")";
+        + format.height + getPixelAspectRatioString(format.pixelWidthHeightRatio)
+        + getDecoderCountersBufferCountString(player.getVideoDecoderCounters()) + ")";
   }
 
   private String getAudioString() {
@@ -178,10 +151,17 @@ public final class DebugTextViewHelper implements Runnable, ExoPlayer.EventListe
       return "";
     }
     counters.ensureUpdated();
-    return " rb:" + counters.renderedOutputBufferCount
+    return " sib:" + counters.skippedInputBufferCount
         + " sb:" + counters.skippedOutputBufferCount
-        + " db:" + counters.droppedOutputBufferCount
-        + " mcdb:" + counters.maxConsecutiveDroppedOutputBufferCount;
+        + " rb:" + counters.renderedOutputBufferCount
+        + " db:" + counters.droppedBufferCount
+        + " mcdb:" + counters.maxConsecutiveDroppedBufferCount
+        + " dk:" + counters.droppedToKeyframeCount;
+  }
+
+  private static String getPixelAspectRatioString(float pixelAspectRatio) {
+    return pixelAspectRatio == Format.NO_VALUE || pixelAspectRatio == 1f ? ""
+        : (" par:" + String.format(Locale.US, "%.02f", pixelAspectRatio));
   }
 
 }

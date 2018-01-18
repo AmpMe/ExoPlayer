@@ -29,8 +29,7 @@ import com.google.android.exoplayer2.util.Util;
 import java.io.IOException;
 
 /**
- * Facilitates the extraction of AAC samples from elementary audio files formatted as AAC with ADTS
- * headers.
+ * Extracts samples from AAC bit streams with ADTS framing.
  */
 public final class AdtsExtractor implements Extractor {
 
@@ -55,10 +54,9 @@ public final class AdtsExtractor implements Extractor {
   private static final int MAX_SNIFF_BYTES = 8 * 1024;
 
   private final long firstSampleTimestampUs;
+  private final AdtsReader reader;
   private final ParsableByteArray packetBuffer;
 
-  // Accessed only by the loading thread.
-  private AdtsReader reader;
   private boolean startedPacket;
 
   public AdtsExtractor() {
@@ -67,8 +65,11 @@ public final class AdtsExtractor implements Extractor {
 
   public AdtsExtractor(long firstSampleTimestampUs) {
     this.firstSampleTimestampUs = firstSampleTimestampUs;
+    reader = new AdtsReader(true);
     packetBuffer = new ParsableByteArray(MAX_PACKET_SIZE);
   }
+
+  // Extractor implementation.
 
   @Override
   public boolean sniff(ExtractorInput input) throws IOException, InterruptedException {
@@ -127,7 +128,6 @@ public final class AdtsExtractor implements Extractor {
 
   @Override
   public void init(ExtractorOutput output) {
-    reader = new AdtsReader(true);
     reader.createTracks(output, new TrackIdGenerator(0, 1));
     output.endTracks();
     output.seekMap(new SeekMap.Unseekable(C.TIME_UNSET));

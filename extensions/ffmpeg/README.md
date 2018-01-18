@@ -1,19 +1,25 @@
-# FfmpegAudioRenderer #
+# ExoPlayer FFmpeg extension #
 
-## Description ##
+The FFmpeg extension provides `FfmpegAudioRenderer`, which uses FFmpeg for
+decoding and can render audio encoded in a variety of formats.
 
-The FFmpeg extension is a [Renderer][] implementation that uses FFmpeg to decode
-audio.
+## License note ##
 
-[Renderer]: https://google.github.io/ExoPlayer/doc/reference/com/google/android/exoplayer2/Renderer.html
+Please note that whilst the code in this repository is licensed under
+[Apache 2.0][], using this extension also requires building and including one or
+more external libraries as described below. These are licensed separately.
+
+[Apache 2.0]: https://github.com/google/ExoPlayer/blob/release-v2/LICENSE
 
 ## Build instructions ##
 
-* Checkout ExoPlayer along with Extensions
+To use this extension you need to clone the ExoPlayer repository and depend on
+its modules locally. Instructions for doing this can be found in ExoPlayer's
+[top level README][]. The extension is not provided via JCenter (see [#2781][]
+for more information).
 
-```
-git clone https://github.com/google/ExoPlayer.git
-```
+In addition, it's necessary to build the extension's native components as
+follows:
 
 * Set the following environment variables:
 
@@ -25,8 +31,6 @@ FFMPEG_EXT_PATH="${EXOPLAYER_ROOT}/extensions/ffmpeg/src/main"
 
 * Download the [Android NDK][] and set its location in an environment variable:
 
-[Android NDK]: https://developer.android.com/tools/sdk/ndk/index.html
-
 ```
 NDK_PATH="<path to Android NDK>"
 ```
@@ -37,7 +41,11 @@ NDK_PATH="<path to Android NDK>"
 HOST_PLATFORM="linux-x86_64"
 ```
 
-* Fetch and build FFmpeg. For example, to fetch and build for armeabi-v7a,
+* Fetch and build FFmpeg. The configuration flags determine which formats will
+  be supported. See the [Supported formats][] page for more details of the
+  available flags.
+
+For example, to fetch and build for armeabi-v7a,
   arm64-v8a and x86 on Linux x86_64:
 
 ```
@@ -106,20 +114,42 @@ cd "${FFMPEG_EXT_PATH}"/jni && \
 ${NDK_PATH}/ndk-build APP_ABI="armeabi-v7a arm64-v8a x86" -j4
 ```
 
-* In your project, you can add a dependency on the extension by using a rule
-  like this:
+## Using the extension ##
 
-```
-// in settings.gradle
-include ':..:ExoPlayer:library'
-include ':..:ExoPlayer:extension-ffmpeg'
+Once you've followed the instructions above to check out, build and depend on
+the extension, the next step is to tell ExoPlayer to use `FfmpegAudioRenderer`.
+How you do this depends on which player API you're using:
 
-// in build.gradle
-dependencies {
-    compile project(':..:ExoPlayer:library')
-    compile project(':..:ExoPlayer:extension-ffmpeg')
-}
-```
+* If you're passing a `DefaultRenderersFactory` to
+  `ExoPlayerFactory.newSimpleInstance`, you can enable using the extension by
+  setting the `extensionRendererMode` parameter of the `DefaultRenderersFactory`
+  constructor to `EXTENSION_RENDERER_MODE_ON`. This will use
+  `FfmpegAudioRenderer` for playback if `MediaCodecAudioRenderer` doesn't
+  support the input format. Pass `EXTENSION_RENDERER_MODE_PREFER` to give
+  `FfmpegAudioRenderer` priority over `MediaCodecAudioRenderer`.
+* If you've subclassed `DefaultRenderersFactory`, add an `FfmpegAudioRenderer`
+  to the output list in `buildAudioRenderers`. ExoPlayer will use the first
+  `Renderer` in the list that supports the input media format.
+* If you've implemented your own `RenderersFactory`, return an
+  `FfmpegAudioRenderer` instance from `createRenderers`. ExoPlayer will use the
+  first `Renderer` in the returned array that supports the input media format.
+* If you're using `ExoPlayerFactory.newInstance`, pass an `FfmpegAudioRenderer`
+  in the array of `Renderer`s. ExoPlayer will use the first `Renderer` in the
+  list that supports the input media format.
 
-* Now, when you build your app, the extension will be built and the native
-  libraries will be packaged along with the APK.
+Note: These instructions assume you're using `DefaultTrackSelector`. If you have
+a custom track selector the choice of `Renderer` is up to your implementation,
+so you need to make sure you are passing an `FfmpegAudioRenderer` to the player,
+then implement your own logic to use the renderer for a given track.
+
+[top level README]: https://github.com/google/ExoPlayer/blob/release-v2/README.md
+[Android NDK]: https://developer.android.com/tools/sdk/ndk/index.html
+[#2781]: https://github.com/google/ExoPlayer/issues/2781
+[Supported formats]: https://google.github.io/ExoPlayer/supported-formats.html#ffmpeg-extension
+
+## Links ##
+
+* [Javadoc][]: Classes matching `com.google.android.exoplayer2.ext.ffmpeg.*`
+  belong to this module.
+
+[Javadoc]: https://google.github.io/ExoPlayer/doc/reference/index.html

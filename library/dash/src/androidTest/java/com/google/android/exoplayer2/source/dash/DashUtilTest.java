@@ -62,7 +62,7 @@ public final class DashUtilTest extends TestCase {
   }
 
   private static AdaptationSet newAdaptationSets(Representation... representations) {
-    return new AdaptationSet(0, C.TRACK_TYPE_VIDEO, Arrays.asList(representations), null);
+    return new AdaptationSet(0, C.TRACK_TYPE_VIDEO, Arrays.asList(representations), null, null);
   }
 
   private static Representation newRepresentations(DrmInitData drmInitData) {
@@ -76,7 +76,7 @@ public final class DashUtilTest extends TestCase {
 
   private static DrmInitData newDrmInitData() {
     return new DrmInitData(new SchemeData(C.WIDEVINE_UUID, "mimeType",
-        new byte[]{1, 4, 7, 0, 3, 6}));
+        new byte[] {1, 4, 7, 0, 3, 6}));
   }
 
 }

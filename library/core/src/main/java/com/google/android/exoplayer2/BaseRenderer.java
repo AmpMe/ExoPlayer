@@ -15,7 +15,10 @@
  */
 package com.google.android.exoplayer2;
 
+import android.support.annotation.Nullable;
 import com.google.android.exoplayer2.decoder.DecoderInputBuffer;
+import com.google.android.exoplayer2.drm.DrmInitData;
+import com.google.android.exoplayer2.drm.DrmSessionManager;
 import com.google.android.exoplayer2.source.SampleStream;
 import com.google.android.exoplayer2.util.Assertions;
 import com.google.android.exoplayer2.util.MediaClock;
@@ -96,7 +99,7 @@ public abstract class BaseRenderer implements Renderer, RendererCapabilities {
     this.stream = stream;
     readEndOfStream = false;
     streamOffsetUs = offsetUs;
-    onStreamChanged(formats);
+    onStreamChanged(formats, offsetUs);
   }
 
   @Override
@@ -142,9 +145,9 @@ public abstract class BaseRenderer implements Renderer, RendererCapabilities {
   public final void disable() {
     Assertions.checkState(state == STATE_ENABLED);
     state = STATE_DISABLED;
-    onDisabled();
     stream = null;
     streamIsFinal = false;
+    onDisabled();
   }
 
   // RendererCapabilities implementation.
@@ -183,16 +186,19 @@ public abstract class BaseRenderer implements Renderer, RendererCapabilities {
    * The default implementation is a no-op.
    *
    * @param formats The enabled formats.
+   * @param offsetUs The offset that will be added to the timestamps of buffers read via
+   *     {@link #readSource(FormatHolder, DecoderInputBuffer, boolean)} so that decoder input
+   *     buffers have monotonically increasing timestamps.
    * @throws ExoPlaybackException If an error occurs.
    */
-  protected void onStreamChanged(Format[] formats) throws ExoPlaybackException {
+  protected void onStreamChanged(Format[] formats, long offsetUs) throws ExoPlaybackException {
     // Do nothing.
   }
 
   /**
    * Called when the position is reset. This occurs when the renderer is enabled after
-   * {@link #onStreamChanged(Format[])} has been called, and also when a position discontinuity
-   * is encountered.
+   * {@link #onStreamChanged(Format[], long)} has been called, and also when a position
+   * discontinuity is encountered.
    * <p>
    * After a position reset, the renderer's {@link SampleStream} is guaranteed to provide samples
    * starting from a key frame.
@@ -293,18 +299,38 @@ public abstract class BaseRenderer implements Renderer, RendererCapabilities {
    * {@code positionUs} is beyond it.
    *
    * @param positionUs The position in microseconds.
+   * @return The number of samples that were skipped.
    */
-  protected void skipSource(long positionUs) {
-    stream.skipData(positionUs - streamOffsetUs);
+  protected int skipSource(long positionUs) {
+    return stream.skipData(positionUs - streamOffsetUs);
   }
 
   /**
    * Returns whether the upstream source is ready.
-   *
-   * @return Whether the source is ready.
    */
   protected final boolean isSourceReady() {
     return readEndOfStream ? streamIsFinal : stream.isReady();
+  }
+
+  /**
+   * Returns whether {@code drmSessionManager} supports the specified {@code drmInitData}, or true
+   * if {@code drmInitData} is null.
+   *
+   * @param drmSessionManager The drm session manager.
+   * @param drmInitData {@link DrmInitData} of the format to check for support.
+   * @return Whether {@code drmSessionManager} supports the specified {@code drmInitData}, or
+   *     true if {@code drmInitData} is null.
+   */
+  protected static boolean supportsFormatDrm(@Nullable DrmSessionManager<?> drmSessionManager,
+      @Nullable DrmInitData drmInitData) {
+    if (drmInitData == null) {
+      // Content is unencrypted.
+      return true;
+    } else if (drmSessionManager == null) {
+      // Content is encrypted, but no drm session manager is available.
+      return false;
+    }
+    return drmSessionManager.canAcquireSession(drmInitData);
   }
 
 }

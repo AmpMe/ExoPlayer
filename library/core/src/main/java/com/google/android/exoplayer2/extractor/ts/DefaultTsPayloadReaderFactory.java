@@ -28,7 +28,7 @@ import java.util.Collections;
 import java.util.List;
 
 /**
- * Default implementation for {@link TsPayloadReader.Factory}.
+ * Default {@link TsPayloadReader.Factory} implementation.
  */
 public final class DefaultTsPayloadReaderFactory implements TsPayloadReader.Factory {
 
@@ -78,7 +78,7 @@ public final class DefaultTsPayloadReaderFactory implements TsPayloadReader.Fact
     this.flags = flags;
     if (!isSet(FLAG_OVERRIDE_CAPTION_DESCRIPTORS) && closedCaptionFormats.isEmpty()) {
       closedCaptionFormats = Collections.singletonList(Format.createTextSampleFormat(null,
-          MimeTypes.APPLICATION_CEA608, null, Format.NO_VALUE, 0, null, null));
+          MimeTypes.APPLICATION_CEA608, 0, null));
     }
     this.closedCaptionFormats = closedCaptionFormats;
   }
@@ -94,9 +94,12 @@ public final class DefaultTsPayloadReaderFactory implements TsPayloadReader.Fact
       case TsExtractor.TS_STREAM_TYPE_MPA:
       case TsExtractor.TS_STREAM_TYPE_MPA_LSF:
         return new PesReader(new MpegAudioReader(esInfo.language));
-      case TsExtractor.TS_STREAM_TYPE_AAC:
+      case TsExtractor.TS_STREAM_TYPE_AAC_ADTS:
         return isSet(FLAG_IGNORE_AAC_STREAM)
             ? null : new PesReader(new AdtsReader(false, esInfo.language));
+      case TsExtractor.TS_STREAM_TYPE_AAC_LATM:
+        return isSet(FLAG_IGNORE_AAC_STREAM)
+            ? null : new PesReader(new LatmReader(esInfo.language));
       case TsExtractor.TS_STREAM_TYPE_AC3:
       case TsExtractor.TS_STREAM_TYPE_E_AC3:
         return new PesReader(new Ac3Reader(esInfo.language));

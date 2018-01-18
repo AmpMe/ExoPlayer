@@ -18,6 +18,7 @@ package com.google.android.exoplayer2.extractor.flv;
 import android.util.Pair;
 import com.google.android.exoplayer2.C;
 import com.google.android.exoplayer2.Format;
+import com.google.android.exoplayer2.ParserException;
 import com.google.android.exoplayer2.extractor.TrackOutput;
 import com.google.android.exoplayer2.util.CodecSpecificDataUtil;
 import com.google.android.exoplayer2.util.MimeTypes;
@@ -67,7 +68,7 @@ import java.util.Collections;
         hasOutputFormat = true;
       } else if (audioFormat == AUDIO_FORMAT_ALAW || audioFormat == AUDIO_FORMAT_ULAW) {
         String type = audioFormat == AUDIO_FORMAT_ALAW ? MimeTypes.AUDIO_ALAW
-            : MimeTypes.AUDIO_ULAW;
+            : MimeTypes.AUDIO_MLAW;
         int pcmEncoding = (header & 0x01) == 1 ? C.ENCODING_PCM_16BIT : C.ENCODING_PCM_8BIT;
         Format format = Format.createAudioSampleFormat(null, type, null, Format.NO_VALUE,
             Format.NO_VALUE, 1, 8000, pcmEncoding, null, null, 0, null);
@@ -85,7 +86,7 @@ import java.util.Collections;
   }
 
   @Override
-  protected void parsePayload(ParsableByteArray data, long timeUs) {
+  protected void parsePayload(ParsableByteArray data, long timeUs) throws ParserException {
     if (audioFormat == AUDIO_FORMAT_MP3) {
       int sampleSize = data.bytesLeft();
       output.sampleData(data, sampleSize);

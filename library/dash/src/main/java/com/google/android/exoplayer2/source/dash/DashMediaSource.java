@@ -22,6 +22,7 @@ import android.util.Log;
 import android.util.SparseArray;
 import com.google.android.exoplayer2.C;
 import com.google.android.exoplayer2.ExoPlayer;
+import com.google.android.exoplayer2.ExoPlayerLibraryInfo;
 import com.google.android.exoplayer2.ParserException;
 import com.google.android.exoplayer2.Timeline;
 import com.google.android.exoplayer2.source.AdaptiveMediaSourceEventListener;
@@ -52,6 +53,10 @@ import java.util.TimeZone;
  */
 public final class DashMediaSource implements MediaSource {
 
+  static {
+    ExoPlayerLibraryInfo.registerModule("goog.exo.dash");
+  }
+
   /**
    * The default minimum number of times to retry loading data prior to failing.
    */
@@ -71,8 +76,8 @@ public final class DashMediaSource implements MediaSource {
 
   /**
    * The interval in milliseconds between invocations of
-   * {@link MediaSource.Listener#onSourceInfoRefreshed(Timeline, Object)} when the source's
-   * {@link Timeline} is changing dynamically (for example, for incomplete live streams).
+   * {@link MediaSource.Listener#onSourceInfoRefreshed(MediaSource, Timeline, Object)} when the
+   * source's {@link Timeline} is changing dynamically (for example, for incomplete live streams).
    */
   private static final int NOTIFY_MANIFEST_INTERVAL_MS = 5000;
   /**
@@ -281,7 +286,8 @@ public final class DashMediaSource implements MediaSource {
   }
 
   @Override
-  public MediaPeriod createPeriod(int periodIndex, Allocator allocator, long positionUs) {
+  public MediaPeriod createPeriod(MediaPeriodId periodId, Allocator allocator) {
+    int periodIndex = periodId.periodIndex;
     EventDispatcher periodEventDispatcher = eventDispatcher.copyWithMediaTimeOffsetMs(
         manifest.getPeriod(periodIndex).startMs);
     DashMediaPeriod mediaPeriod = new DashMediaPeriod(firstPeriodId + periodIndex, manifest,
@@ -410,12 +416,14 @@ public final class DashMediaSource implements MediaSource {
 
   private void resolveUtcTimingElement(UtcTimingElement timingElement) {
     String scheme = timingElement.schemeIdUri;
-    if (Util.areEqual(scheme, "urn:mpeg:dash:utc:direct:2012")) {
+    if (Util.areEqual(scheme, "urn:mpeg:dash:utc:direct:2014")
+        || Util.areEqual(scheme, "urn:mpeg:dash:utc:direct:2012")) {
       resolveUtcTimingElementDirect(timingElement);
-    } else if (Util.areEqual(scheme, "urn:mpeg:dash:utc:http-iso:2014")) {
+    } else if (Util.areEqual(scheme, "urn:mpeg:dash:utc:http-iso:2014")
+        || Util.areEqual(scheme, "urn:mpeg:dash:utc:http-iso:2012")) {
       resolveUtcTimingElementHttp(timingElement, new Iso8601Parser());
-    } else if (Util.areEqual(scheme, "urn:mpeg:dash:utc:http-xsdate:2012")
-        || Util.areEqual(scheme, "urn:mpeg:dash:utc:http-xsdate:2014")) {
+    } else if (Util.areEqual(scheme, "urn:mpeg:dash:utc:http-xsdate:2014")
+        || Util.areEqual(scheme, "urn:mpeg:dash:utc:http-xsdate:2012")) {
       resolveUtcTimingElementHttp(timingElement, new XsDateTimeParser());
     } else {
       // Unsupported scheme.
@@ -519,7 +527,7 @@ public final class DashMediaSource implements MediaSource {
     DashTimeline timeline = new DashTimeline(manifest.availabilityStartTime, windowStartTimeMs,
         firstPeriodId, currentStartTimeUs, windowDurationUs, windowDefaultStartPositionUs,
         manifest);
-    sourceListener.onSourceInfoRefreshed(timeline, manifest);
+    sourceListener.onSourceInfoRefreshed(this, timeline, manifest);
 
     if (!sideloadedManifest) {
       // Remove any pending simulated refresh.
@@ -625,9 +633,9 @@ public final class DashMediaSource implements MediaSource {
     private final long windowDefaultStartPositionUs;
     private final DashManifest manifest;
 
-    public DashTimeline(long presentationStartTimeMs, long windowStartTimeMs,
-        int firstPeriodId, long offsetInFirstPeriodUs, long windowDurationUs,
-        long windowDefaultStartPositionUs, DashManifest manifest) {
+    public DashTimeline(long presentationStartTimeMs, long windowStartTimeMs, int firstPeriodId,
+        long offsetInFirstPeriodUs, long windowDurationUs, long windowDefaultStartPositionUs,
+        DashManifest manifest) {
       this.presentationStartTimeMs = presentationStartTimeMs;
       this.windowStartTimeMs = windowStartTimeMs;
       this.firstPeriodId = firstPeriodId;
@@ -650,7 +658,7 @@ public final class DashMediaSource implements MediaSource {
           + Assertions.checkIndex(periodIndex, 0, manifest.getPeriodCount()) : null;
       return period.set(id, uid, 0, manifest.getPeriodDurationUs(periodIndex),
           C.msToUs(manifest.getPeriod(periodIndex).startMs - manifest.getPeriod(0).startMs)
-              - offsetInFirstPeriodUs, false);
+              - offsetInFirstPeriodUs);
     }
 
     @Override

@@ -22,4 +22,8 @@
   <string name="exo_controls_stop_description">"Detener"</string>
   <string name="exo_controls_rewind_description">"Rebobinar"</string>
   <string name="exo_controls_fastforward_description">"Avance rápido"</string>
+  <string name="exo_controls_repeat_all_description">"Repetir todo"</string>
+  <string name="exo_controls_repeat_off_description">"No repetir"</string>
+  <string name="exo_controls_repeat_one_description">"Repetir uno"</string>
+  <string name="exo_controls_shuffle_description">"Reproducción aleatoria"</string>
 </resources>

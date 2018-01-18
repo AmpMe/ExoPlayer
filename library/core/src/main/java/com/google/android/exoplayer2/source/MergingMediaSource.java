@@ -98,7 +98,7 @@ public final class MergingMediaSource implements MediaSource {
       final int sourceIndex = i;
       mediaSources[sourceIndex].prepareSource(player, false, new Listener() {
         @Override
-        public void onSourceInfoRefreshed(Timeline timeline, Object manifest) {
+        public void onSourceInfoRefreshed(MediaSource source, Timeline timeline, Object manifest) {
           handleSourceInfoRefreshed(sourceIndex, timeline, manifest);
         }
       });
@@ -116,10 +116,10 @@ public final class MergingMediaSource implements MediaSource {
   }
 
   @Override
-  public MediaPeriod createPeriod(int index, Allocator allocator, long positionUs) {
+  public MediaPeriod createPeriod(MediaPeriodId id, Allocator allocator) {
     MediaPeriod[] periods = new MediaPeriod[mediaSources.length];
     for (int i = 0; i < periods.length; i++) {
-      periods[i] = mediaSources[i].createPeriod(index, allocator, positionUs);
+      periods[i] = mediaSources[i].createPeriod(id, allocator);
     }
     return new MergingMediaPeriod(periods);
   }
@@ -152,7 +152,7 @@ public final class MergingMediaSource implements MediaSource {
       primaryManifest = manifest;
     }
     if (pendingTimelineSources.isEmpty()) {
-      listener.onSourceInfoRefreshed(primaryTimeline, primaryManifest);
+      listener.onSourceInfoRefreshed(this, primaryTimeline, primaryManifest);
     }
   }
 

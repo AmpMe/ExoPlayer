@@ -47,7 +47,8 @@ public final class FlacStreamInfo {
     this.sampleRate = scratch.readBits(20);
     this.channels = scratch.readBits(3) + 1;
     this.bitsPerSample = scratch.readBits(5) + 1;
-    this.totalSamples = scratch.readBits(36);
+    this.totalSamples = ((scratch.readBits(4) & 0xFL) << 32)
+        | (scratch.readBits(32) & 0xFFFFFFFFL);
     // Remaining 16 bytes is md5 value
   }
 
@@ -64,7 +65,7 @@ public final class FlacStreamInfo {
   }
 
   public int maxDecodedFrameSize() {
-    return maxBlockSize * channels * 2;
+    return maxBlockSize * channels * (bitsPerSample / 8);
   }
 
   public int bitRate() {

@@ -17,6 +17,7 @@ apply plugin: 'com.jfrog.bintray'
 apply plugin: 'maven-publish'
 apply plugin: 'maven'
 apply plugin: 'com.android.library'
+apply from: '../../constants.gradle'
 
 group project.ext.releaseGroupId
 version = project.ext.releaseVersion
@@ -41,16 +42,22 @@ android {
         targetSdkVersion project.ext.targetSdkVersion
     }
 
+    // Workaround to prevent circular dependency on project :testutils.
     sourceSets {
         androidTest {
+            java.srcDirs += "../../testutils/src/main/java/"
+        }
+        test {
             java.srcDirs += "../../testutils/src/main/java/"
         }
     }
 
     buildTypes {
-        debug {
-            testCoverageEnabled = true
-        }
+        // Re-enable test coverage when the following issue is fixed:
+        // https://issuetracker.google.com/issues/37019591
+        // debug {
+        //    testCoverageEnabled = true
+        // }
         release {
             minifyEnabled false
         }
@@ -83,6 +90,10 @@ dependencies {
     androidTestCompile 'com.google.dexmaker:dexmaker:' + dexmakerVersion
     androidTestCompile 'com.google.dexmaker:dexmaker-mockito:' + dexmakerVersion
     androidTestCompile 'org.mockito:mockito-core:' + mockitoVersion
+    testCompile 'com.google.truth:truth:' + truthVersion
+    testCompile 'junit:junit:' + junitVersion
+    testCompile 'org.mockito:mockito-core:' + mockitoVersion
+    testCompile 'org.robolectric:robolectric:' + robolectricVersion
 }
 
 bintray {
