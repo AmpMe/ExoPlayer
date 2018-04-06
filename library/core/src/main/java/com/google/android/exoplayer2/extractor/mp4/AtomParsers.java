@@ -15,6 +15,8 @@
  */
 package com.google.android.exoplayer2.extractor.mp4;
 
+import static com.google.android.exoplayer2.util.MimeTypes.getMimeTypeFromMp4ObjectType;
+
 import android.util.Log;
 import android.util.Pair;
 import com.google.android.exoplayer2.C;
@@ -49,7 +51,6 @@ import java.util.List;
   private static final int TYPE_sbtl = Util.getIntegerCodeForString("sbtl");
   private static final int TYPE_subt = Util.getIntegerCodeForString("subt");
   private static final int TYPE_clcp = Util.getIntegerCodeForString("clcp");
-  private static final int TYPE_cenc = Util.getIntegerCodeForString("cenc");
   private static final int TYPE_meta = Util.getIntegerCodeForString("meta");
 
   /**
@@ -128,7 +129,8 @@ import java.util.List;
 
     int sampleCount = sampleSizeBox.getSampleCount();
     if (sampleCount == 0) {
-      return new TrackSampleTable(new long[0], new int[0], 0, new long[0], new int[0]);
+      return new TrackSampleTable(
+          new long[0], new int[0], 0, new long[0], new int[0], C.TIME_UNSET);
     }
 
     // Entries are byte offsets of chunks.
@@ -193,6 +195,7 @@ import java.util.List;
     long[] timestamps;
     int[] flags;
     long timestampTimeUnits = 0;
+    long duration;
 
     if (!isRechunkable) {
       offsets = new long[sampleCount];
@@ -260,6 +263,7 @@ import java.util.List;
         offset += sizes[i];
         remainingSamplesInChunk--;
       }
+      duration = timestampTimeUnits + timestampOffset;
 
       Assertions.checkArgument(remainingSamplesAtTimestampOffset == 0);
       // Remove trailing ctts entries with 0-valued sample counts.
@@ -294,13 +298,15 @@ import java.util.List;
       maximumSize = rechunkedResults.maximumSize;
       timestamps = rechunkedResults.timestamps;
       flags = rechunkedResults.flags;
+      duration = rechunkedResults.duration;
     }
+    long durationUs = Util.scaleLargeTimestamp(duration, C.MICROS_PER_SECOND, track.timescale);
 
     if (track.editListDurations == null || gaplessInfoHolder.hasGaplessInfo()) {
       // There is no edit list, or we are ignoring it as we already have gapless metadata to apply.
       // This implementation does not support applying both gapless metadata and an edit list.
       Util.scaleLargeTimestampsInPlace(timestamps, C.MICROS_PER_SECOND, track.timescale);
-      return new TrackSampleTable(offsets, sizes, maximumSize, timestamps, flags);
+      return new TrackSampleTable(offsets, sizes, maximumSize, timestamps, flags, durationUs);
     }
 
     // See the BMFF spec (ISO 14496-12) subsection 8.6.6. Edit lists that require prerolling from a
@@ -317,10 +323,11 @@ import java.util.List;
       long editStartTime = track.editListMediaTimes[0];
       long editEndTime = editStartTime + Util.scaleLargeTimestamp(track.editListDurations[0],
           track.timescale, track.movieTimescale);
-      long lastSampleEndTime = timestampTimeUnits;
-      if (timestamps[0] <= editStartTime && editStartTime < timestamps[1]
-          && timestamps[timestamps.length - 1] < editEndTime && editEndTime <= lastSampleEndTime) {
-        long paddingTimeUnits = lastSampleEndTime - editEndTime;
+      if (timestamps[0] <= editStartTime
+          && editStartTime < timestamps[1]
+          && timestamps[timestamps.length - 1] < editEndTime
+          && editEndTime <= duration) {
+        long paddingTimeUnits = duration - editEndTime;
         long encoderDelay = Util.scaleLargeTimestamp(editStartTime - timestamps[0],
             track.format.sampleRate, track.timescale);
         long encoderPadding = Util.scaleLargeTimestamp(paddingTimeUnits,
@@ -330,7 +337,7 @@ import java.util.List;
           gaplessInfoHolder.encoderDelay = (int) encoderDelay;
           gaplessInfoHolder.encoderPadding = (int) encoderPadding;
           Util.scaleLargeTimestampsInPlace(timestamps, C.MICROS_PER_SECOND, track.timescale);
-          return new TrackSampleTable(offsets, sizes, maximumSize, timestamps, flags);
+          return new TrackSampleTable(offsets, sizes, maximumSize, timestamps, flags, durationUs);
         }
       }
     }
@@ -339,11 +346,15 @@ import java.util.List;
       // The current version of the spec leaves handling of an edit with zero segment_duration in
       // unfragmented files open to interpretation. We handle this as a special case and include all
       // samples in the edit.
+      long editStartTime = track.editListMediaTimes[0];
       for (int i = 0; i < timestamps.length; i++) {
-        timestamps[i] = Util.scaleLargeTimestamp(timestamps[i] - track.editListMediaTimes[0],
-            C.MICROS_PER_SECOND, track.timescale);
+        timestamps[i] =
+            Util.scaleLargeTimestamp(
+                timestamps[i] - editStartTime, C.MICROS_PER_SECOND, track.timescale);
       }
-      return new TrackSampleTable(offsets, sizes, maximumSize, timestamps, flags);
+      durationUs =
+          Util.scaleLargeTimestamp(duration - editStartTime, C.MICROS_PER_SECOND, track.timescale);
+      return new TrackSampleTable(offsets, sizes, maximumSize, timestamps, flags, durationUs);
     }
 
     // Omit any sample at the end point of an edit for audio tracks.
@@ -354,13 +365,15 @@ import java.util.List;
     int nextSampleIndex = 0;
     boolean copyMetadata = false;
     for (int i = 0; i < track.editListDurations.length; i++) {
-      long mediaTime = track.editListMediaTimes[i];
-      if (mediaTime != -1) {
-        long duration = Util.scaleLargeTimestamp(track.editListDurations[i], track.timescale,
-            track.movieTimescale);
-        int startIndex = Util.binarySearchCeil(timestamps, mediaTime, true, true);
-        int endIndex = Util.binarySearchCeil(timestamps, mediaTime + duration, omitClippedSample,
-            false);
+      long editMediaTime = track.editListMediaTimes[i];
+      if (editMediaTime != -1) {
+        long editDuration =
+            Util.scaleLargeTimestamp(
+                track.editListDurations[i], track.timescale, track.movieTimescale);
+        int startIndex = Util.binarySearchCeil(timestamps, editMediaTime, true, true);
+        int endIndex =
+            Util.binarySearchCeil(
+                timestamps, editMediaTime + editDuration, omitClippedSample, false);
         editedSampleCount += endIndex - startIndex;
         copyMetadata |= nextSampleIndex != startIndex;
         nextSampleIndex = endIndex;
@@ -377,12 +390,13 @@ import java.util.List;
     long pts = 0;
     int sampleIndex = 0;
     for (int i = 0; i < track.editListDurations.length; i++) {
-      long mediaTime = track.editListMediaTimes[i];
-      long duration = track.editListDurations[i];
-      if (mediaTime != -1) {
-        long endMediaTime = mediaTime + Util.scaleLargeTimestamp(duration, track.timescale,
-            track.movieTimescale);
-        int startIndex = Util.binarySearchCeil(timestamps, mediaTime, true, true);
+      long editMediaTime = track.editListMediaTimes[i];
+      long editDuration = track.editListDurations[i];
+      if (editMediaTime != -1) {
+        long endMediaTime =
+            editMediaTime
+                + Util.scaleLargeTimestamp(editDuration, track.timescale, track.movieTimescale);
+        int startIndex = Util.binarySearchCeil(timestamps, editMediaTime, true, true);
         int endIndex = Util.binarySearchCeil(timestamps, endMediaTime, omitClippedSample, false);
         if (copyMetadata) {
           int count = endIndex - startIndex;
@@ -392,8 +406,9 @@ import java.util.List;
         }
         for (int j = startIndex; j < endIndex; j++) {
           long ptsUs = Util.scaleLargeTimestamp(pts, C.MICROS_PER_SECOND, track.movieTimescale);
-          long timeInSegmentUs = Util.scaleLargeTimestamp(timestamps[j] - mediaTime,
-              C.MICROS_PER_SECOND, track.timescale);
+          long timeInSegmentUs =
+              Util.scaleLargeTimestamp(
+                  timestamps[j] - editMediaTime, C.MICROS_PER_SECOND, track.timescale);
           editedTimestamps[sampleIndex] = ptsUs + timeInSegmentUs;
           if (copyMetadata && editedSizes[sampleIndex] > editedMaximumSize) {
             editedMaximumSize = sizes[j];
@@ -401,8 +416,9 @@ import java.util.List;
           sampleIndex++;
         }
       }
-      pts += duration;
+      pts += editDuration;
     }
+    long editedDurationUs = Util.scaleLargeTimestamp(pts, C.MICROS_PER_SECOND, track.timescale);
 
     boolean hasSyncSample = false;
     for (int i = 0; i < editedFlags.length && !hasSyncSample; i++) {
@@ -413,11 +429,16 @@ import java.util.List;
       // Such edit lists are often (although not always) broken, so we ignore it and continue.
       Log.w(TAG, "Ignoring edit list: Edited sample sequence does not contain a sync sample.");
       Util.scaleLargeTimestampsInPlace(timestamps, C.MICROS_PER_SECOND, track.timescale);
-      return new TrackSampleTable(offsets, sizes, maximumSize, timestamps, flags);
+      return new TrackSampleTable(offsets, sizes, maximumSize, timestamps, flags, durationUs);
     }
 
-    return new TrackSampleTable(editedOffsets, editedSizes, editedMaximumSize, editedTimestamps,
-        editedFlags);
+    return new TrackSampleTable(
+        editedOffsets,
+        editedSizes,
+        editedMaximumSize,
+        editedTimestamps,
+        editedFlags,
+        editedDurationUs);
   }
 
   /**
@@ -1011,47 +1032,11 @@ import java.util.List;
 
     // Set the MIME type based on the object type indication (14496-1 table 5).
     int objectTypeIndication = parent.readUnsignedByte();
-    String mimeType;
-    switch (objectTypeIndication) {
-      case 0x60:
-      case 0x61:
-        mimeType = MimeTypes.VIDEO_MPEG2;
-        break;
-      case 0x20:
-        mimeType = MimeTypes.VIDEO_MP4V;
-        break;
-      case 0x21:
-        mimeType = MimeTypes.VIDEO_H264;
-        break;
-      case 0x23:
-        mimeType = MimeTypes.VIDEO_H265;
-        break;
-      case 0x6B:
-        mimeType = MimeTypes.AUDIO_MPEG;
-        return Pair.create(mimeType, null);
-      case 0x40:
-      case 0x66:
-      case 0x67:
-      case 0x68:
-        mimeType = MimeTypes.AUDIO_AAC;
-        break;
-      case 0xA5:
-        mimeType = MimeTypes.AUDIO_AC3;
-        break;
-      case 0xA6:
-        mimeType = MimeTypes.AUDIO_E_AC3;
-        break;
-      case 0xA9:
-      case 0xAC:
-        mimeType = MimeTypes.AUDIO_DTS;
-        return Pair.create(mimeType, null);
-      case 0xAA:
-      case 0xAB:
-        mimeType = MimeTypes.AUDIO_DTS_HD;
-        return Pair.create(mimeType, null);
-      default:
-        mimeType = null;
-        break;
+    String mimeType = getMimeTypeFromMp4ObjectType(objectTypeIndication);
+    if (MimeTypes.AUDIO_MPEG.equals(mimeType)
+        || MimeTypes.AUDIO_DTS.equals(mimeType)
+        || MimeTypes.AUDIO_DTS_HD.equals(mimeType)) {
+      return Pair.create(mimeType, null);
     }
 
     parent.skipBytes(12);

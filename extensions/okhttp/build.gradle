@@ -21,6 +21,7 @@ android {
     defaultConfig {
         minSdkVersion project.ext.minSdkVersion
         targetSdkVersion project.ext.targetSdkVersion
+        consumerProguardFiles 'proguard-rules.txt'
     }
 
     lintOptions {
@@ -30,8 +31,9 @@ android {
 }
 
 dependencies {
-    compile project(modulePrefix + 'library-core')
-    compile('com.squareup.okhttp3:okhttp:3.9.0') {
+    implementation project(modulePrefix + 'library-core')
+    implementation 'com.android.support:support-annotations:' + supportLibraryVersion
+    api('com.squareup.okhttp3:okhttp:3.10.0') {
         exclude group: 'org.json'
     }
 }
