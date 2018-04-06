@@ -74,7 +74,7 @@ public final class StandaloneMediaClock implements MediaClock {
   }
 
   public void synchronize(MediaClock clock) {
-    setPositionUs(clock.getPositionUs());
+    resetPosition(clock.getPositionUs());
     playbackParameters = clock.getPlaybackParameters();
   }
 
