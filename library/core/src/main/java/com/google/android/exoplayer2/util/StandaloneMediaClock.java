@@ -107,4 +107,9 @@ public final class StandaloneMediaClock implements MediaClock {
     return playbackParameters;
   }
 
+  @Override
+  public boolean isUsable() {
+    return true;
+  }
+
 }

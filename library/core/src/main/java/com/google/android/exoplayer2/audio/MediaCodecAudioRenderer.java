@@ -428,6 +428,11 @@ public class MediaCodecAudioRenderer extends MediaCodecRenderer implements Media
   }
 
   @Override
+  public boolean isUsable() {
+    return true;
+  }
+
+  @Override
   protected void onQueueInputBuffer(DecoderInputBuffer buffer) {
     if (allowFirstBufferPositionDiscontinuity && !buffer.isDecodeOnly()) {
       // TODO: Remove this hack once we have a proper fix for [Internal: b/71876314].

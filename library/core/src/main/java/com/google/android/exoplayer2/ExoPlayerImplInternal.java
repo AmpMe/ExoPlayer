@@ -488,13 +488,15 @@ import java.util.Collections;
         playbackInfoUpdate.setPositionDiscontinuity(Player.DISCONTINUITY_REASON_INTERNAL);
       }
     } else {
-      if (customMediaClock != null) {
+      if (customMediaClock != null && customMediaClock.isUsable()) {
         mediaClock.synchronize(customMediaClock);
         rendererPositionUs = playingPeriodHolder.toRendererTime(mediaClock.getPositionUs());
-        periodPositionUs = rendererPositionUs;
-      } else {
-        rendererPositionUs = mediaClock.getPositionUs();
         periodPositionUs = playingPeriodHolder.toPeriodTime(rendererPositionUs);
+        maybeTriggerPendingMessages(playbackInfo.positionUs, periodPositionUs);
+      } else {
+        rendererPositionUs = mediaClock.syncAndGetPositionUs();
+        periodPositionUs = playingPeriodHolder.toPeriodTime(rendererPositionUs);
+        maybeTriggerPendingMessages(playbackInfo.positionUs, periodPositionUs);
       }
       playbackInfo.positionUs = periodPositionUs;
     }

@@ -299,6 +299,11 @@ public abstract class SimpleDecoderAudioRenderer extends BaseRenderer implements
     // Do nothing.
   }
 
+  @Override
+  public boolean isUsable() {
+    return true;
+  }
+
   /**
    * Creates a decoder for the given format.
    *

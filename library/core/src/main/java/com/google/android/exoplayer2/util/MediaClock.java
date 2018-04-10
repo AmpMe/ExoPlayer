@@ -41,4 +41,6 @@ public interface MediaClock {
    */
   PlaybackParameters getPlaybackParameters();
 
+  boolean isUsable();
+
 }

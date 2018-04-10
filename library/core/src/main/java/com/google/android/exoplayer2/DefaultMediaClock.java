@@ -156,6 +156,11 @@ import com.google.android.exoplayer2.util.StandaloneMediaClock;
         : standaloneMediaClock.getPlaybackParameters();
   }
 
+  @Override
+  public boolean isUsable() {
+    return true;
+  }
+
   public void synchronize(MediaClock clock) {
     standaloneMediaClock.synchronize(clock);
   }

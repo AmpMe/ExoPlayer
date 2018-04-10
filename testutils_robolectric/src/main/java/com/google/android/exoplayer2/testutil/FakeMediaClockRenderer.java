@@ -30,4 +30,9 @@ public abstract class FakeMediaClockRenderer extends FakeRenderer implements Med
   public MediaClock getMediaClock() {
     return this;
   }
+
+  @Override
+  public boolean isUsable() {
+    return true;
+  }
 }
